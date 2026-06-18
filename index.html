@@ -150,6 +150,17 @@
   .stile.s-low { background: var(--low-bg); border-color: transparent; }
   .stile.s-low .st-val { color: var(--low-ink); }
 
+  /* day card matrix: rows = buổi, cols = thời điểm */
+  .matrix { display: grid; grid-template-columns: 42px repeat(3, 1fr); gap: 5px; padding: 12px; }
+  .mx-h { font-family: var(--display); font-size: 10.5px; font-weight: 600; color: var(--muted); text-align: center; align-self: end; padding-bottom: 2px; line-height: 1.1; }
+  .mx-row-label { font-family: var(--display); font-size: 12px; font-weight: 600; color: var(--ink); display: flex; align-items: center; }
+  .mx-cell { border: 1px solid var(--hair); border-radius: 9px; min-height: 46px; display: flex; align-items: center; justify-content: center; font-family: var(--display); font-weight: 600; font-size: 17px; cursor: pointer; background: var(--surface); font-variant-numeric: tabular-nums; }
+  .mx-cell:active { transform: scale(.97); }
+  .mx-cell.empty { color: var(--hair); font-weight: 400; }
+  .mx-cell.s-ok { background: var(--ok-bg); color: var(--ok-ink); border-color: transparent; }
+  .mx-cell.s-over { background: var(--over-bg); color: var(--over-ink); border-color: transparent; }
+  .mx-cell.s-low { background: var(--low-bg); color: var(--low-ink); border-color: transparent; }
+
   dialog { border: none; border-radius: 16px; padding: 0; max-width: 440px; width: calc(100% - 32px); box-shadow: 0 20px 60px rgba(22,48,46,.25); }
   dialog::backdrop { background: rgba(22,48,46,.4); }
   .settings { padding: 22px; }
@@ -304,19 +315,13 @@
           <p v-if="visibleDates.length === 0" class="empty-row">Chưa có dữ liệu.</p>
           <div v-for="d in visibleDates" :key="d" class="day-card">
             <div class="day-head"><span class="dc-date">{{ ddmm(d) }}</span><span class="dc-sum">{{ daySummary(d) }}</span></div>
-            <div class="tabs">
-              <button v-for="g in groups" :key="g" class="tab" type="button" :class="{ active: tabOf(d) === g }" @click="setCardTab(d, g)">{{ shortName[g] }}<span v-if="groupHasOver(d, g)" class="warn"></span></button>
-            </div>
-            <div class="panels">
-              <div v-for="g in groups" :key="g" class="panel" :class="{ active: tabOf(d) === g }">
-                <div class="sgrid">
-                  <div v-for="s in slotsOf(g)" :key="s.k" class="stile" :class="tileClass(d, s)" @click="selectCell(d, s.k)">
-                    <span class="st-label">{{ s.full }}</span>
-                    <span class="st-val">{{ cellOf(d, s.k) ? fmt(cellOf(d, s.k).v) : '+' }}</span>
-                    <span v-if="!cellOf(d, s.k)" class="st-target">≤ {{ fmtTarget(s.target) }}</span>
-                  </div>
-                </div>
-              </div>
+            <div class="matrix">
+              <div class="mx-h"></div>
+              <div class="mx-h" v-for="h in colHeads" :key="h">{{ h }}</div>
+              <template v-for="g in groups" :key="g">
+                <div class="mx-row-label">{{ shortName[g] }}</div>
+                <div v-for="s in slotsOf(g)" :key="s.k" class="mx-cell" :class="tileClass(d, s)" @click="selectCell(d, s.k)">{{ cellOf(d, s.k) ? fmt(cellOf(d, s.k).v) : '–' }}</div>
+              </template>
             </div>
           </div>
         </div>
@@ -339,11 +344,11 @@
   // ====== Hard-coded JSONBin config (open the app and it just works) ======
   // NOTE: this key ships inside the page; keep the repo private and use an
   // Access Key limited to Read + Update on this single bin.
-	var CONFIG = {
-	  binId: "6a33867df5f4af5e29068ec4",
-	  key: "$2a$10$NpDOK4yP/tm2ypYQyttew.Q6Fwg6L4nurSo5FNdeIoKYhAtL3sYyW",
-	  header: "X-Master-Key"
-	};
+  var CONFIG = {
+    binId: "6a33723ff5f4af5e29063f9f",
+    key: "$2a$10$hB9QIbV9XiGdgNsuy36CFu4WC00c/wV/ZCoFjw7ijV63oLgT/49je",
+    header: "X-Access-Key"
+  };
 
   var MMOL_TO_MGDL = 18.0182;
   var LOW_LIMIT = 3.5;
@@ -388,6 +393,7 @@
         SLOTS: SLOTS,
         groups: ["Buổi sáng", "Buổi trưa", "Buổi tối"],
         shortName: { "Buổi sáng": "Sáng", "Buổi trưa": "Trưa", "Buổi tối": "Tối" },
+        colHeads: ["Trước ăn", "Sau 1h", "Sau 2h"],
         statusLabel: STATUS_LABEL,
         days: {},
         cardTab: {},
