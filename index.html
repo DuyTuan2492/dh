@@ -96,6 +96,11 @@
   .clear-link:hover { color: var(--over); }
 
   /* Stats */
+  .sheet-head { display: flex; align-items: center; justify-content: space-between; gap: 10px; flex-wrap: wrap; margin-bottom: 14px; }
+  .sheet-head .eyebrow { margin: 0; }
+  .range-toggle { display: inline-flex; gap: 6px; flex-wrap: wrap; }
+  .range-toggle button { appearance: none; border: 1px solid var(--hair); border-radius: 999px; background: var(--surface); color: var(--muted); font: inherit; font-family: var(--display); font-weight: 600; font-size: 12px; padding: 6px 13px; cursor: pointer; }
+  .range-toggle button.on { background: var(--accent); color: #fff; border-color: var(--accent); }
   .stats { display: flex; gap: 10px; margin-bottom: 14px; flex-wrap: wrap; }
   .stat { flex: 1; min-width: 120px; border: 1px solid var(--hair); border-radius: 12px; padding: 12px 14px; }
   .stat .n { font-family: var(--display); font-weight: 700; font-size: 24px; font-variant-numeric: tabular-nums; }
@@ -290,7 +295,12 @@
 
       <!-- Sheet -->
       <section class="card">
-        <p class="eyebrow">Bảng theo dõi</p>
+        <div class="sheet-head">
+          <p class="eyebrow">Bảng theo dõi</p>
+          <div class="range-toggle">
+            <button v-for="r in ranges" :key="r.v" type="button" :class="{ on: rangeDays === r.v }" @click="rangeDays = r.v">{{ r.label }}</button>
+          </div>
+        </div>
 
         <div class="stats">
           <div class="stat"><div class="n">{{ stats.pct }}%</div><div class="l">Đạt mục tiêu (7 ngày)</div></div>
@@ -402,6 +412,8 @@
         groups: ["Buổi sáng", "Buổi trưa", "Buổi tối"],
         shortName: { "Buổi sáng": "Sáng", "Buổi trưa": "Trưa", "Buổi tối": "Tối" },
         colHeads: ["Trước ăn", "Sau 1h", "Sau 2h"],
+        ranges: [{ v: 7, label: "7 ngày" }, { v: 15, label: "15 ngày" }, { v: 30, label: "30 ngày" }, { v: 0, label: "Tất cả" }],
+        rangeDays: 7,
         statusLabel: STATUS_LABEL,
         days: {},
         cardTab: {},
@@ -426,7 +438,10 @@
       },
       visibleDates: function () {
         var set = {}; set[this.selDate] = true; set[todayISO()] = true;
-        for (var d in this.days) set[d] = true;
+        var cutoff = this.rangeDays > 0 ? shiftISO(todayISO(), -(this.rangeDays - 1)) : null;
+        for (var d in this.days) {
+          if (!cutoff || d >= cutoff) set[d] = true;
+        }
         return Object.keys(set).sort().reverse();
       },
       stats: function () {
