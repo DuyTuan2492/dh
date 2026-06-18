@@ -328,7 +328,7 @@
               <div class="mx-h" v-for="h in colHeads" :key="h">{{ h }}</div>
               <template v-for="g in groups" :key="g">
                 <div class="mx-row-label">{{ shortName[g] }}</div>
-                <div v-for="s in slotsOf(g)" :key="s.k" class="mx-cell" :class="tileClass(d, s)" @click="selectCell(d, s.k)">{{ cellOf(d, s.k) ? fmt(cellOf(d, s.k).v) : '–' }}</div>
+                <div v-for="s in slotsOf(g)" :key="s.k" class="mx-cell" :class="tileClass(d, s)" @click="selectCell(d, s.k)">{{ cellOf(d, s.k) ? fmt(cellOf(d, s.k).v) : '+' }}</div>
               </template>
             </div>
           </div>
