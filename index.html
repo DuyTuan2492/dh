@@ -188,6 +188,17 @@
   .status { font-size: 12px; margin-top: 12px; min-height: 16px; }
   .status.ok { color: var(--ok); } .status.err { color: var(--over); }
 
+  /* confirm dialog */
+  .modal-backdrop { position: fixed; inset: 0; background: rgba(22,48,46,.4); display: flex; align-items: center; justify-content: center; padding: 16px; z-index: 50; }
+  .confirm { background: var(--surface); border-radius: 16px; box-shadow: 0 20px 60px rgba(22,48,46,.25); padding: 22px; max-width: 380px; width: 100%; }
+  .confirm h2 { font-family: var(--display); font-size: 18px; margin: 0 0 10px; }
+  .confirm p.sub { margin: 0 0 6px; color: var(--ink); font-size: 13.5px; line-height: 1.55; }
+  .confirm p.warn { margin: 0 0 18px; color: var(--over); font-size: 12.5px; }
+  .confirm .actions { display: flex; gap: 10px; }
+  .confirm .actions button { flex: 1; padding: 11px; border-radius: 10px; font-family: var(--display); font-weight: 600; cursor: pointer; font-size: 14px; }
+  .btn-danger { border: none; background: var(--over); color: #fff; }
+  .btn-danger:hover { filter: brightness(1.05); }
+
   /* ===== Layout: single column (mobile) -> two columns (desktop) ===== */
   .layout { display: block; }
 
@@ -355,6 +366,22 @@
       </section>
     </div>
   </div>
+
+  <!-- Xác nhận xoá ô -->
+  <div v-if="confirmClear" class="modal-backdrop" @click.self="confirmClear = false">
+    <div class="confirm" role="dialog" aria-modal="true" aria-labelledby="confirmTitle">
+      <h2 id="confirmTitle">Xoá giá trị ô này?</h2>
+      <p class="sub">
+        <b>{{ ddmm(selDate) }}</b> · {{ activeGroup }} – {{ slotFull }}<br />
+        Giá trị hiện tại: <b>{{ currentCell ? fmt(currentCell.v) + ' ' + unitLabel : '—' }}</b>
+      </p>
+      <p class="warn">Không thể hoàn tác sau khi xoá.</p>
+      <div class="actions">
+        <button type="button" class="btn-ghost" @click="confirmClear = false">Huỷ</button>
+        <button type="button" class="btn-danger" @click="doClearCell">Xoá</button>
+      </div>
+    </div>
+  </div>
 </div>
 
 <script src="https://cdnjs.cloudflare.com/ajax/libs/vue/3.4.21/vue.global.prod.min.js"></script>
@@ -425,7 +452,8 @@
         valueInput: "",
         noteInput: "",
         saving: false,
-        errorMsg: ""
+        errorMsg: "",
+        confirmClear: false
       };
     },
 
@@ -433,6 +461,7 @@
       activeGroup: function () { return SLOT_BY_K[this.selSlot].group; },
       unitLabel: function () { return this.unit === "mmol" ? "mmol/L" : "mg/dL"; },
       goalText: function () { return this.fmtTarget(SLOT_BY_K[this.selSlot].target); },
+      slotFull: function () { return SLOT_BY_K[this.selSlot].full; },
       currentCell: function () { return this.cellOf(this.selDate, this.selSlot); },
       liveStatus: function () {
         var m = this.parseInputToMmol();
@@ -587,6 +616,12 @@
       },
 
       clearCell: function () {
+        if (!this.currentCell) return;
+        this.confirmClear = true;
+      },
+
+      doClearCell: function () {
+        this.confirmClear = false;
         if (!this.currentCell) return;
         var self = this, d = this.selDate, k = this.selSlot;
         var prev = this.days[d][k];
