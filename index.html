@@ -106,7 +106,16 @@
   .stats { display: flex; gap: 10px; margin-bottom: 14px; flex-wrap: wrap; }
   .stat { flex: 1; min-width: 120px; border: 1px solid var(--hair); border-radius: 12px; padding: 12px 14px; }
   .stat .n { font-family: var(--display); font-weight: 700; font-size: 24px; font-variant-numeric: tabular-nums; }
+  .stat .n .n-sub { font-size: 14px; font-weight: 500; color: var(--muted); }
   .stat .l { font-size: 11.5px; color: var(--muted); }
+
+  .breakdown { border: 1px solid var(--hair); border-radius: 12px; padding: 4px 0; margin-bottom: 14px; }
+  .bd-title { font-family: var(--display); font-size: 11px; font-weight: 600; letter-spacing: .12em; text-transform: uppercase; color: var(--muted); margin: 8px 14px; }
+  .bd-row { display: flex; align-items: center; justify-content: space-between; gap: 10px; padding: 9px 14px; border-top: 1px solid var(--hair); }
+  .bd-when { font-size: 13.5px; font-weight: 500; color: var(--ink); }
+  .bd-tag { font-family: var(--display); font-weight: 600; font-size: 12px; padding: 3px 10px; border-radius: 999px; white-space: nowrap; flex-shrink: 0; }
+  .bd-tag.over { background: var(--over-bg); color: var(--over-ink); }
+  .bd-none { font-size: 13px; color: var(--ok-ink); background: var(--ok-bg); border: 1px solid var(--ok-bg); border-radius: 12px; padding: 11px 14px; margin: 0 0 14px; }
 
   /* Grid table */
   .scroller { overflow-x: auto; -webkit-overflow-scrolling: touch; border: 1px solid var(--hair); border-radius: 12px; }
@@ -316,10 +325,20 @@
         </div>
 
         <div class="stats">
-          <div class="stat"><div class="n">{{ stats.pct }}%</div><div class="l">Đạt mục tiêu (7 ngày)</div></div>
-          <div class="stat"><div class="n">{{ stats.ok }}</div><div class="l">Lần đạt</div></div>
+          <div class="stat"><div class="n">{{ stats.pct }}%</div><div class="l">Đạt mục tiêu ({{ rangeLabel }})</div></div>
+          <div class="stat"><div class="n">{{ stats.ok }}<span class="n-sub">/{{ stats.total }}</span></div><div class="l">Lần đạt</div></div>
           <div class="stat"><div class="n" style="color:var(--over)">{{ stats.over }}</div><div class="l">Lần vượt</div></div>
         </div>
+
+        <!-- Bác sĩ: vượt mục tiêu ở thời điểm nào, bao nhiêu lần -->
+        <div v-if="overBreakdown.length" class="breakdown">
+          <p class="bd-title">Thời điểm vượt mục tiêu ({{ rangeLabel }})</p>
+          <div class="bd-row" v-for="b in overBreakdown" :key="b.k">
+            <span class="bd-when">{{ b.group }} – {{ b.full }}</span>
+            <span class="bd-tag over">Vượt {{ b.over }} lần</span>
+          </div>
+        </div>
+        <p v-else-if="stats.total" class="bd-none">Không có lần nào vượt mục tiêu trong {{ rangeLabel }}. 🎉</p>
 
         <!-- Desktop table -->
         <div class="scroller">
@@ -475,19 +494,42 @@
         }
         return Object.keys(set).sort().reverse();
       },
+      rangeCutoff: function () {
+        return this.rangeDays > 0 ? shiftISO(todayISO(), -(this.rangeDays - 1)) : null;
+      },
+      rangeLabel: function () {
+        return this.rangeDays > 0 ? this.rangeDays + " ngày" : "Tất cả";
+      },
       stats: function () {
-        var total = 0, ok = 0, over = 0, cutoff = shiftISO(todayISO(), -6);
+        var total = 0, ok = 0, over = 0, cutoff = this.rangeCutoff;
         for (var d in this.days) {
-          if (d < cutoff) continue;
+          if (cutoff && d < cutoff) continue;
           var day = this.days[d];
           for (var k in day) {
             if (!SLOT_BY_K[k]) continue;
             total++;
             var st = this.statusOf(day[k].v, k);
-            if (st === "ok") ok++; else if (st === "over") over++;
+            if (st === "over") over++; else ok++;
           }
         }
-        return { pct: total ? Math.round(ok / total * 100) : 0, ok: ok, over: over };
+        return { pct: total ? Math.round(ok / total * 100) : 0, total: total, ok: ok, over: over };
+      },
+      overBreakdown: function () {
+        var cutoff = this.rangeCutoff, counts = {};
+        for (var d in this.days) {
+          if (cutoff && d < cutoff) continue;
+          var day = this.days[d];
+          for (var k in day) {
+            if (!SLOT_BY_K[k]) continue;
+            if (this.statusOf(day[k].v, k) === "over") counts[k] = (counts[k] || 0) + 1;
+          }
+        }
+        var out = [];
+        SLOTS.forEach(function (s) {
+          if (counts[s.k]) out.push({ k: s.k, group: s.group, full: s.full, over: counts[s.k] });
+        });
+        out.sort(function (a, b) { return b.over - a.over; });
+        return out;
       }
     },
 
