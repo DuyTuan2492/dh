@@ -486,44 +486,45 @@
         var m = this.parseInputToMmol();
         return m === null ? null : this.statusOf(m, this.selSlot);
       },
-      visibleDates: function () {
-        var set = {}; set[this.selDate] = true; set[todayISO()] = true;
-        var cutoff = this.rangeDays > 0 ? shiftISO(todayISO(), -(this.rangeDays - 1)) : null;
-        for (var d in this.days) {
-          if (!cutoff || d >= cutoff) set[d] = true;
-        }
-        return Object.keys(set).sort().reverse();
+      recordedDates: function () {
+        // các ngày thực sự có đo, mới nhất trước
+        return Object.keys(this.days).sort().reverse();
       },
-      rangeCutoff: function () {
-        return this.rangeDays > 0 ? shiftISO(todayISO(), -(this.rangeDays - 1)) : null;
+      rangeDates: function () {
+        // "7 ngày" = 7 ngày gần nhất CÓ dữ liệu (7 dòng), bỏ qua ngày không đo
+        var ds = this.recordedDates;
+        return this.rangeDays > 0 ? ds.slice(0, this.rangeDays) : ds.slice();
+      },
+      visibleDates: function () {
+        var set = {};
+        this.rangeDates.forEach(function (d) { set[d] = true; });
+        set[this.selDate] = true; set[todayISO()] = true;
+        return Object.keys(set).sort().reverse();
       },
       rangeLabel: function () {
         return this.rangeDays > 0 ? this.rangeDays + " ngày" : "Tất cả";
       },
       stats: function () {
-        var total = 0, ok = 0, over = 0, cutoff = this.rangeCutoff;
-        for (var d in this.days) {
-          if (cutoff && d < cutoff) continue;
-          var day = this.days[d];
+        var self = this, total = 0, ok = 0, over = 0;
+        this.rangeDates.forEach(function (d) {
+          var day = self.days[d];
           for (var k in day) {
             if (!SLOT_BY_K[k]) continue;
             total++;
-            var st = this.statusOf(day[k].v, k);
-            if (st === "over") over++; else ok++;
+            if (self.statusOf(day[k].v, k) === "over") over++; else ok++;
           }
-        }
+        });
         return { pct: total ? Math.round(ok / total * 100) : 0, total: total, ok: ok, over: over };
       },
       overBreakdown: function () {
-        var cutoff = this.rangeCutoff, counts = {};
-        for (var d in this.days) {
-          if (cutoff && d < cutoff) continue;
-          var day = this.days[d];
+        var self = this, counts = {};
+        this.rangeDates.forEach(function (d) {
+          var day = self.days[d];
           for (var k in day) {
             if (!SLOT_BY_K[k]) continue;
-            if (this.statusOf(day[k].v, k) === "over") counts[k] = (counts[k] || 0) + 1;
+            if (self.statusOf(day[k].v, k) === "over") counts[k] = (counts[k] || 0) + 1;
           }
-        }
+        });
         var out = [];
         SLOTS.forEach(function (s) {
           if (counts[s.k]) out.push({ k: s.k, group: s.group, full: s.full, over: counts[s.k] });
