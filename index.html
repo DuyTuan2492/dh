@@ -33,6 +33,14 @@
   .icon-btn { appearance: none; border: 1px solid var(--hair); background: var(--surface); color: var(--ink); border-radius: 10px; padding: 8px 12px; font-family: var(--body); font-size: 13px; font-weight: 500; cursor: pointer; }
   .icon-btn:hover { border-color: var(--accent); color: var(--accent); }
   .icon-btn:focus-visible { outline: 2px solid var(--accent); outline-offset: 2px; }
+  .refresh-btn { display: inline-flex; align-items: center; gap: 6px; }
+  .refresh-btn[disabled] { opacity: .7; cursor: progress; }
+
+  @keyframes spin { to { transform: rotate(360deg); } }
+  .spinner { display: inline-block; width: 14px; height: 14px; border: 2px solid var(--hair); border-top-color: var(--accent); border-radius: 50%; animation: spin .7s linear infinite; }
+  .spinner.big { width: 34px; height: 34px; border-width: 3px; }
+  .load-overlay { position: fixed; inset: 0; background: rgba(244,246,245,.78); display: flex; flex-direction: column; align-items: center; justify-content: center; gap: 12px; z-index: 60; }
+  .load-overlay p { font-family: var(--display); font-size: 13px; font-weight: 600; color: var(--muted); margin: 0; }
 
   .banner { display: none; align-items: flex-start; gap: 10px; background: #FFF7E6; border: 1px solid #F1D89B; color: #7A5A12; border-radius: 12px; padding: 11px 14px; font-size: 13px; margin-bottom: 16px; }
   .banner.show { display: flex; }
@@ -251,9 +259,20 @@
 </head>
 <body>
 <div id="app">
+  <!-- spinner toàn màn hình cho lần tải đầu -->
+  <div v-if="loading && !loadedOnce" class="load-overlay">
+    <span class="spinner big"></span>
+    <p>Đang tải dữ liệu…</p>
+  </div>
+
   <div class="wrap">
     <header class="top">
       <div class="brand"><span class="dot"></span><h1>Sổ đường huyết</h1></div>
+      <button class="icon-btn refresh-btn" type="button" @click="fetchData" :disabled="loading" :aria-busy="loading" aria-label="Làm mới dữ liệu">
+        <span v-if="loading" class="spinner"></span>
+        <span v-else>↻</span>
+        <span class="refresh-text">{{ loading ? 'Đang tải…' : 'Làm mới' }}</span>
+      </button>
     </header>
 
     <div class="banner" :class="{ show: errorMsg }"><span>⚠️</span><div>{{ errorMsg }}</div></div>
@@ -472,7 +491,9 @@
         noteInput: "",
         saving: false,
         errorMsg: "",
-        confirmClear: false
+        confirmClear: false,
+        loading: false,
+        loadedOnce: false
       };
     },
 
@@ -624,15 +645,20 @@
 
       fetchData: function () {
         var self = this;
-        return fetch("https://api.jsonbin.io/v3/b/" + encodeURIComponent(CONFIG.binId) + "/latest", { headers: apiHeaders({ "X-Bin-Meta": "false" }) })
+        this.loading = true;
+        return fetch("https://api.jsonbin.io/v3/b/" + encodeURIComponent(CONFIG.binId) + "/latest", { headers: apiHeaders({ "X-Bin-Meta": "false" }), cache: "no-store" })
           .then(function (r) { if (!r.ok) throw new Error("GET " + r.status); return r.json(); })
           .then(function (data) {
             var rec = (data && data.record !== undefined) ? data.record : data;
             self.days = (rec && rec.days && typeof rec.days === "object") ? rec.days : {};
             self.errorMsg = "";
-            self.syncEntry();
+            // đừng ghi đè ô đang nhập dở khi tự làm mới ngầm
+            var cell = self.cellOf(self.selDate, self.selSlot);
+            var current = cell ? self.fmt(cell.v) : "";
+            if (self.valueInput === "" || self.valueInput === current) self.syncEntry();
           })
-          .catch(function (err) { self.errorMsg = "Không tải được dữ liệu (" + err.message + "). Kiểm tra mạng hoặc Access Key (cần quyền Read)."; });
+          .catch(function (err) { self.errorMsg = "Không tải được dữ liệu (" + err.message + "). Kiểm tra mạng hoặc Access Key (cần quyền Read)."; })
+          .then(function () { self.loading = false; self.loadedOnce = true; });
       },
       pushData: function () {
         return fetch("https://api.jsonbin.io/v3/b/" + encodeURIComponent(CONFIG.binId), {
@@ -680,7 +706,17 @@
       }
     },
 
-    mounted: function () { this.fetchData(); }
+    mounted: function () {
+      var self = this;
+      this.fetchData();
+      // quay lại tab / mở lại app -> tự lấy data mới nhất
+      document.addEventListener("visibilitychange", function () {
+        if (document.visibilityState === "visible" && !self.loading && !self.saving) self.fetchData();
+      });
+      window.addEventListener("focus", function () {
+        if (!self.loading && !self.saving) self.fetchData();
+      });
+    }
   }).mount("#app");
 </script>
 </body>
