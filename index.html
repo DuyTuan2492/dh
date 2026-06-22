@@ -61,8 +61,10 @@
   .datebar .today:hover { border-color: var(--accent); color: var(--accent); }
 
   .field-label { font-size: 12px; color: var(--muted); font-weight: 500; margin: 0 0 8px; display: block; }
-  .group-label { font-family: var(--display); font-size: 10.5px; font-weight: 600; letter-spacing: .1em; text-transform: uppercase; color: var(--muted); margin: 12px 0 7px; }
-  .group-label:first-of-type { margin-top: 0; }
+  .slot-group { border: 1px solid var(--hair); border-radius: 12px; padding: 12px 14px; margin-bottom: 10px; background: var(--surface); }
+  .slot-group:last-child { margin-bottom: 0; }
+  .slot-group.active { border-color: var(--accent); box-shadow: 0 0 0 1px var(--accent); }
+  .group-label { font-family: var(--display); font-size: 12.5px; font-weight: 700; letter-spacing: .06em; text-transform: uppercase; color: var(--ink); margin: 0 0 9px; }
   .ent-tabs { display: flex; gap: 4px; border-bottom: 1px solid var(--hair); margin-bottom: 13px; }
   .ent-tab { flex: 1; appearance: none; border: none; background: none; font: inherit; font-family: var(--display); font-weight: 600; font-size: 13px; color: var(--muted); padding: 9px 4px; cursor: pointer; border-bottom: 2px solid transparent; margin-bottom: -1px; }
   .ent-tab.active { color: var(--ink); border-bottom-color: var(--accent); }
@@ -306,12 +308,12 @@
 
         <!-- Desktop: all buổi, all 9 chips -->
         <div class="slots-stacked">
-          <template v-for="g in groups" :key="g">
+          <div class="slot-group" v-for="g in groups" :key="g" :class="{ active: activeGroup === g }">
             <div class="group-label">{{ g }}</div>
             <div class="chips">
               <button v-for="s in slotsOf(g)" :key="s.k" class="chip" type="button" :aria-pressed="s.k === selSlot" @click="chooseSlot(s.k)">{{ s.full }}<span v-if="cellOf(selDate, s.k)" class="filled" :style="{ background: statusColor(statusOf(cellOf(selDate, s.k).v, s.k)) }"></span></button>
             </div>
-          </template>
+          </div>
         </div>
 
         <div class="readout">
