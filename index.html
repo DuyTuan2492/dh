@@ -711,13 +711,16 @@
     mounted: function () {
       var self = this;
       this.fetchData();
-      // quay lại tab / mở lại app -> tự lấy data mới nhất
+      // quay lại tab / mở lại app -> nhảy về hôm nay + lấy data mới nhất
+      var refreshToday = function () {
+        if (self.loading || self.saving) return;
+        self.selDate = todayISO();
+        self.fetchData();
+      };
       document.addEventListener("visibilitychange", function () {
-        if (document.visibilityState === "visible" && !self.loading && !self.saving) self.fetchData();
+        if (document.visibilityState === "visible") refreshToday();
       });
-      window.addEventListener("focus", function () {
-        if (!self.loading && !self.saving) self.fetchData();
-      });
+      window.addEventListener("focus", refreshToday);
     }
   }).mount("#app");
 </script>
